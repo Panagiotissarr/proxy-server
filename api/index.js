@@ -16,15 +16,51 @@ const LANDING_PAGE = `<!DOCTYPE html>
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         }
         .container { text-align: center; padding: 40px; }
-        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 12px; }
-        p { font-size: 1.1rem; color: #9aa0a6; }
+        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 8px; }
+        #status { font-size: 1.3rem; margin-top: 16px; font-weight: 600; }
+        #status.connected { color: #48d162; }
+        #status.disconnected { color: #e05555; }
+        .dot {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .dot.on { background: #48d162; }
+        .dot.off { background: #e05555; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>This is a Proxy server</h1>
-        <p>Panas Proxy is running.</p>
+        <div id="status">
+            <span class="dot off" id="dot"></span>
+            <span id="label">Checking...</span>
+        </div>
     </div>
+    <script>
+        const dot = document.getElementById('dot');
+        const label = document.getElementById('label');
+        async function check() {
+            try {
+                const r = await fetch('/api/health');
+                const d = await r.json();
+                if (d.status === 'ok') {
+                    dot.className = 'dot on';
+                    label.textContent = 'You are connected to Pana Proxy';
+                } else {
+                    dot.className = 'dot off';
+                    label.textContent = 'You are disconnected';
+                }
+            } catch {
+                dot.className = 'dot off';
+                label.textContent = 'You are disconnected';
+            }
+        }
+        check();
+        setInterval(check, 5000);
+    </script>
 </body>
 </html>`;
 
@@ -36,6 +72,14 @@ export default function handler(req, res) {
     if (req.method === 'OPTIONS') {
         res.statusCode = 200;
         return res.end();
+    }
+
+    const url = new URL(req.url, `https://${req.headers.host}`);
+
+    if (url.pathname === '/api/health') {
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = 200;
+        return res.end(JSON.stringify({ status: 'ok', proxy: 'Pana Proxy' }));
     }
 
     res.setHeader('Content-Type', 'text/html');

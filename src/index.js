@@ -36,15 +36,51 @@ const LANDING_PAGE = `<!DOCTYPE html>
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         }
         .container { text-align: center; padding: 40px; }
-        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 12px; }
-        p { font-size: 1.1rem; color: #9aa0a6; }
+        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 8px; }
+        #status { font-size: 1.3rem; margin-top: 16px; font-weight: 600; }
+        #status.connected { color: #48d162; }
+        #status.disconnected { color: #e05555; }
+        .dot {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .dot.on { background: #48d162; }
+        .dot.off { background: #e05555; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>This is a Proxy server</h1>
-        <p>Panas Proxy is running.</p>
+        <div id="status">
+            <span class="dot off" id="dot"></span>
+            <span id="label">Checking...</span>
+        </div>
     </div>
+    <script>
+        const dot = document.getElementById('dot');
+        const label = document.getElementById('label');
+        async function check() {
+            try {
+                const r = await fetch('/health', { method: 'GET' });
+                const d = await r.json();
+                if (d.status === 'ok') {
+                    dot.className = 'dot on';
+                    label.textContent = 'You are connected to Pana Proxy';
+                } else {
+                    dot.className = 'dot off';
+                    label.textContent = 'You are disconnected';
+                }
+            } catch {
+                dot.className = 'dot off';
+                label.textContent = 'You are disconnected';
+            }
+        }
+        check();
+        setInterval(check, 5000);
+    </script>
 </body>
 </html>`;
 
@@ -127,6 +163,16 @@ fastify.register(fastifyStatic, {
 
 fastify.get("/", (req, reply) => {
     return reply.type("text/html").send(LANDING_PAGE);
+});
+
+fastify.get("/health", async (req, reply) => {
+    try {
+        const url = `http://127.0.0.1:${fastify.server.address().port}/scram/scramjet.all.js`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+        return reply.send({ status: "ok", proxy: "Pana Proxy", engine: res.status < 400 ? "ready" : "starting" });
+    } catch {
+        return reply.send({ status: "ok", proxy: "Pana Proxy", engine: "starting" });
+    }
 });
 
 fastify.get("/get-dynamic-sw.js", (req, reply) => {

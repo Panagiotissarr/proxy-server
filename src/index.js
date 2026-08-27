@@ -169,16 +169,16 @@ fastify.get("/", (req, reply) => {
     return reply.type("text/html").send(LANDING_PAGE);
 });
 
-fastify.post("/api/connect", (req, reply) => {
+fastify.get("/api/connect", (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
     reply.header("Set-Cookie", "proxy_token=active; Path=/; Max-Age=86400; SameSite=Lax");
-    return reply.send({ ok: true });
+    return reply.type("text/html").send(LANDING_PAGE);
 });
 
-fastify.post("/api/disconnect", (req, reply) => {
+fastify.get("/api/disconnect", (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
     reply.header("Set-Cookie", "proxy_token=; Path=/; Max-Age=0; SameSite=Lax");
-    return reply.send({ ok: true });
+    return reply.type("text/html").send(LANDING_PAGE);
 });
 
 fastify.get("/api/health", (req, reply) => {

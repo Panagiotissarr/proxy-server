@@ -81,20 +81,20 @@ export default function handler(req, res) {
     const url = new URL(req.url, `https://${req.headers.host}`);
     const cookies = parseCookies(req);
 
-    // POST /api/connect — tray app calls this to register
-    if (url.pathname === '/api/connect' && req.method === 'POST') {
+    // GET /api/connect — tray app opens this URL to register
+    if (url.pathname === '/api/connect') {
         res.setHeader('Set-Cookie', 'proxy_token=active; Path=/; Max-Age=86400; SameSite=Lax');
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Type', 'text/html');
         res.statusCode = 200;
-        return res.end(JSON.stringify({ ok: true }));
+        return res.end(LANDING_PAGE);
     }
 
-    // POST /api/disconnect — tray app calls this to unregister
-    if (url.pathname === '/api/disconnect' && req.method === 'POST') {
+    // GET /api/disconnect — tray app opens this URL to unregister
+    if (url.pathname === '/api/disconnect') {
         res.setHeader('Set-Cookie', 'proxy_token=; Path=/; Max-Age=0; SameSite=Lax');
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Type', 'text/html');
         res.statusCode = 200;
-        return res.end(JSON.stringify({ ok: true }));
+        return res.end(LANDING_PAGE);
     }
 
     // GET /api/health — website polls this to check status

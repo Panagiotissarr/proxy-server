@@ -45,9 +45,9 @@ const LANDING_PAGE = `<!DOCTYPE html>
         const status = document.getElementById('status');
         async function check() {
             try {
-                const r = await fetch('/health');
+                const r = await fetch('/api/health');
                 const d = await r.json();
-                if (d.status === 'ok') {
+                if (d.connected) {
                     dot.className = 'dot on';
                     label.textContent = 'You are connected to Pana Proxy';
                     status.className = 'status on';
@@ -63,23 +63,60 @@ const LANDING_PAGE = `<!DOCTYPE html>
             }
         }
         check();
-        setInterval(check, 5000);
+        setInterval(check, 3000);
     </script>
 </body>
 </html>`;
 
 export default function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    const url = new URL(req.url, `https://${req.headers.host}`);
-
-    if (url.pathname === '/health' || url.pathname === '/api/health') {
-        res.setHeader('Content-Type', 'application/json');
+    if (req.method === 'OPTIONS') {
         res.statusCode = 200;
-        return res.end(JSON.stringify({ status: 'ok', proxy: 'Pana Proxy' }));
+        return res.end();
     }
 
+    const url = new URL(req.url, `https://${req.headers.host}`);
+    const cookies = parseCookies(req);
+
+    // POST /api/connect — tray app calls this to register
+    if (url.pathname === '/api/connect' && req.method === 'POST') {
+        res.setHeader('Set-Cookie', 'proxy_token=active; Path=/; Max-Age=86400; SameSite=Lax');
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = 200;
+        return res.end(JSON.stringify({ ok: true }));
+    }
+
+    // POST /api/disconnect — tray app calls this to unregister
+    if (url.pathname === '/api/disconnect' && req.method === 'POST') {
+        res.setHeader('Set-Cookie', 'proxy_token=; Path=/; Max-Age=0; SameSite=Lax');
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = 200;
+        return res.end(JSON.stringify({ ok: true }));
+    }
+
+    // GET /api/health — website polls this to check status
+    if (url.pathname === '/api/health') {
+        const connected = cookies.proxy_token === 'active';
+        res.setHeader('Content-Type', 'application/json');
+        res.statusCode = 200;
+        return res.end(JSON.stringify({ connected }));
+    }
+
+    // Landing page
     res.setHeader('Content-Type', 'text/html');
     res.statusCode = 200;
     res.end(LANDING_PAGE);
+}
+
+function parseCookies(req) {
+    const cookies = {};
+    const header = req.headers.cookie || '';
+    header.split(';').forEach(c => {
+        const [key, ...val] = c.split('=');
+        if (key) cookies[key.trim()] = decodeURIComponent(val.join('='));
+    });
+    return cookies;
 }

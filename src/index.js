@@ -65,9 +65,9 @@ const LANDING_PAGE = `<!DOCTYPE html>
         const status = document.getElementById('status');
         async function check() {
             try {
-                const r = await fetch('/health');
+                const r = await fetch('/api/health');
                 const d = await r.json();
-                if (d.status === 'ok') {
+                if (d.connected) {
                     dot.className = 'dot on';
                     label.textContent = 'You are connected to Pana Proxy';
                     status.className = 'status on';
@@ -83,7 +83,7 @@ const LANDING_PAGE = `<!DOCTYPE html>
             }
         }
         check();
-        setInterval(check, 5000);
+        setInterval(check, 3000);
     </script>
 </body>
 </html>`;
@@ -169,9 +169,28 @@ fastify.get("/", (req, reply) => {
     return reply.type("text/html").send(LANDING_PAGE);
 });
 
-fastify.get("/health", async (req, reply) => {
+fastify.post("/api/connect", (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
-    return reply.send({ status: "ok", proxy: "Pana Proxy" });
+    reply.header("Set-Cookie", "proxy_token=active; Path=/; Max-Age=86400; SameSite=Lax");
+    return reply.send({ ok: true });
+});
+
+fastify.post("/api/disconnect", (req, reply) => {
+    reply.header("Access-Control-Allow-Origin", "*");
+    reply.header("Set-Cookie", "proxy_token=; Path=/; Max-Age=0; SameSite=Lax");
+    return reply.send({ ok: true });
+});
+
+fastify.get("/api/health", (req, reply) => {
+    reply.header("Access-Control-Allow-Origin", "*");
+    const header = req.headers.cookie || "";
+    let token = "";
+    for (const c of header.split(";")) {
+        const [k, ...v] = c.split("=");
+        if (k && k.trim() === "proxy_token") { token = v.join("="); break; }
+    }
+    const connected = token === "active";
+    return reply.send({ connected });
 });
 
 fastify.get("/get-dynamic-sw.js", (req, reply) => {

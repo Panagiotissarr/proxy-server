@@ -44,7 +44,7 @@ const LANDING_PAGE = `<!DOCTYPE html>
         const label = document.getElementById('label');
         async function check() {
             try {
-                const r = await fetch('/api/health');
+                const r = await fetch('/health');
                 const d = await r.json();
                 if (d.status === 'ok') {
                     dot.className = 'dot on';
@@ -76,7 +76,7 @@ export default function handler(req, res) {
 
     const url = new URL(req.url, `https://${req.headers.host}`);
 
-    if (url.pathname === '/api/health') {
+    if (url.pathname === '/health' || url.pathname === '/api/health') {
         res.setHeader('Content-Type', 'application/json');
         res.statusCode = 200;
         return res.end(JSON.stringify({ status: 'ok', proxy: 'Pana Proxy' }));

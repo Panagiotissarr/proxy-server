@@ -12,12 +12,41 @@ import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
 
-// Prefixes the front-end proxy engines route through. Keep in sync with
-// SJ_PREFIX / UV_PREFIX in public/index.html.
+// Prefixes the front-end proxy engines route through.
 const PROXY_PREFIXES = [
     "/panagiotis-navigator/scramjet/p/",
     "/panagiotis-navigator/uv/service/",
 ];
+
+const LANDING_PAGE = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panas Proxy Server</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        .container { text-align: center; padding: 40px; }
+        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 12px; }
+        p { font-size: 1.1rem; color: #9aa0a6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>This is a Proxy server</h1>
+        <p>Panas Proxy is running.</p>
+    </div>
+</body>
+</html>`;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,16 +126,7 @@ fastify.register(fastifyStatic, {
 });
 
 fastify.get("/", (req, reply) => {
-    try {
-        const htmlPath = path.join(publicPath, "index.html");
-        if (fs.existsSync(htmlPath)) {
-            const html = fs.readFileSync(htmlPath, "utf8");
-            return reply.type("text/html").send(html);
-        }
-        return reply.code(404).type("text/html").send("<h1>404 Not Found</h1><p>index.html could not be found.</p>");
-    } catch (err) {
-        return reply.code(500).type("text/plain").send("Error loading index.html: " + err.message);
-    }
+    return reply.type("text/html").send(LANDING_PAGE);
 });
 
 fastify.get("/get-dynamic-sw.js", (req, reply) => {

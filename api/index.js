@@ -68,6 +68,11 @@ const LANDING_PAGE = `<!DOCTYPE html>
 </body>
 </html>`;
 
+// In-memory connected state (resets on cold start, which is fine — app re-connects on launch)
+let connected = false;
+let lastHeartbeat = 0;
+const TIMEOUT = 30000; // 30s without heartbeat = disconnected
+
 export default function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -79,27 +84,31 @@ export default function handler(req, res) {
     }
 
     const url = new URL(req.url, `https://${req.headers.host}`);
-    const cookies = parseCookies(req);
 
-    // GET /api/connect — tray app opens this URL to register
-    if (url.pathname === '/api/connect') {
-        res.setHeader('Set-Cookie', 'proxy_token=active; Path=/; Max-Age=86400; SameSite=Lax');
-        res.setHeader('Content-Type', 'text/html');
+    // POST /api/ping — tray app calls this every few seconds while connected
+    if (url.pathname === '/api/ping' && req.method === 'POST') {
+        connected = true;
+        lastHeartbeat = Date.now();
+        res.setHeader('Content-Type', 'application/json');
         res.statusCode = 200;
-        return res.end(LANDING_PAGE);
+        return res.end(JSON.stringify({ ok: true }));
     }
 
-    // GET /api/disconnect — tray app opens this URL to unregister
-    if (url.pathname === '/api/disconnect') {
-        res.setHeader('Set-Cookie', 'proxy_token=; Path=/; Max-Age=0; SameSite=Lax');
-        res.setHeader('Content-Type', 'text/html');
+    // POST /api/disconnect — tray app calls this on disconnect
+    if (url.pathname === '/api/disconnect' && req.method === 'POST') {
+        connected = false;
+        lastHeartbeat = 0;
+        res.setHeader('Content-Type', 'application/json');
         res.statusCode = 200;
-        return res.end(LANDING_PAGE);
+        return res.end(JSON.stringify({ ok: true }));
     }
 
-    // GET /api/health — website polls this to check status
+    // GET /api/health — website polls this
     if (url.pathname === '/api/health') {
-        const connected = cookies.proxy_token === 'active';
+        // Check timeout
+        if (connected && Date.now() - lastHeartbeat > TIMEOUT) {
+            connected = false;
+        }
         res.setHeader('Content-Type', 'application/json');
         res.statusCode = 200;
         return res.end(JSON.stringify({ connected }));
@@ -109,14 +118,4 @@ export default function handler(req, res) {
     res.setHeader('Content-Type', 'text/html');
     res.statusCode = 200;
     res.end(LANDING_PAGE);
-}
-
-function parseCookies(req) {
-    const cookies = {};
-    const header = req.headers.cookie || '';
-    header.split(';').forEach(c => {
-        const [key, ...val] = c.split('=');
-        if (key) cookies[key.trim()] = decodeURIComponent(val.join('='));
-    });
-    return cookies;
 }

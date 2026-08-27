@@ -169,27 +169,30 @@ fastify.get("/", (req, reply) => {
     return reply.type("text/html").send(LANDING_PAGE);
 });
 
-fastify.get("/api/connect", (req, reply) => {
+// In-memory state for connected clients
+let connected = false;
+let lastHeartbeat = 0;
+const TIMEOUT = 30000;
+
+fastify.post("/api/ping", (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
-    reply.header("Set-Cookie", "proxy_token=active; Path=/; Max-Age=86400; SameSite=Lax");
-    return reply.type("text/html").send(LANDING_PAGE);
+    connected = true;
+    lastHeartbeat = Date.now();
+    return reply.send({ ok: true });
 });
 
-fastify.get("/api/disconnect", (req, reply) => {
+fastify.post("/api/disconnect", (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
-    reply.header("Set-Cookie", "proxy_token=; Path=/; Max-Age=0; SameSite=Lax");
-    return reply.type("text/html").send(LANDING_PAGE);
+    connected = false;
+    lastHeartbeat = 0;
+    return reply.send({ ok: true });
 });
 
 fastify.get("/api/health", (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
-    const header = req.headers.cookie || "";
-    let token = "";
-    for (const c of header.split(";")) {
-        const [k, ...v] = c.split("=");
-        if (k && k.trim() === "proxy_token") { token = v.join("="); break; }
+    if (connected && Date.now() - lastHeartbeat > TIMEOUT) {
+        connected = false;
     }
-    const connected = token === "active";
     return reply.send({ connected });
 });
 

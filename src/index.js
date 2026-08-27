@@ -37,54 +37,12 @@ const LANDING_PAGE = `<!DOCTYPE html>
         }
         .container { text-align: center; padding: 40px; max-width: 500px; }
         h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 8px; }
-        .status { font-size: 1.3rem; margin-top: 16px; font-weight: 600; }
-        .status.on { color: #48d162; }
-        .status.off { color: #e05555; }
-        .dot {
-            display: inline-block;
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-        .dot.on { background: #48d162; }
-        .dot.off { background: #e05555; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>This is a Proxy server</h1>
-        <div class="status" id="status">
-            <span class="dot off" id="dot"></span>
-            <span id="label">Checking...</span>
-        </div>
     </div>
-    <script>
-        const dot = document.getElementById('dot');
-        const label = document.getElementById('label');
-        const status = document.getElementById('status');
-        async function check() {
-            try {
-                const r = await fetch('/api/health');
-                const d = await r.json();
-                if (d.connected) {
-                    dot.className = 'dot on';
-                    label.textContent = 'You are connected to Pana Proxy';
-                    status.className = 'status on';
-                } else {
-                    dot.className = 'dot off';
-                    label.textContent = 'You are disconnected';
-                    status.className = 'status off';
-                }
-            } catch {
-                dot.className = 'dot off';
-                label.textContent = 'You are disconnected';
-                status.className = 'status off';
-            }
-        }
-        check();
-        setInterval(check, 3000);
-    </script>
 </body>
 </html>`;
 
@@ -167,33 +125,6 @@ fastify.register(fastifyStatic, {
 
 fastify.get("/", (req, reply) => {
     return reply.type("text/html").send(LANDING_PAGE);
-});
-
-// In-memory state for connected clients
-let connected = false;
-let lastHeartbeat = 0;
-const TIMEOUT = 30000;
-
-fastify.post("/api/ping", (req, reply) => {
-    reply.header("Access-Control-Allow-Origin", "*");
-    connected = true;
-    lastHeartbeat = Date.now();
-    return reply.send({ ok: true });
-});
-
-fastify.post("/api/disconnect", (req, reply) => {
-    reply.header("Access-Control-Allow-Origin", "*");
-    connected = false;
-    lastHeartbeat = 0;
-    return reply.send({ ok: true });
-});
-
-fastify.get("/api/health", (req, reply) => {
-    reply.header("Access-Control-Allow-Origin", "*");
-    if (connected && Date.now() - lastHeartbeat > TIMEOUT) {
-        connected = false;
-    }
-    return reply.send({ connected });
 });
 
 fastify.get("/get-dynamic-sw.js", (req, reply) => {
